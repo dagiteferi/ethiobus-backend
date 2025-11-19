@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from datetime import date
 import cv2
 import numpy as np
+from typing import List # New import
 
 from app import crud, models, schemas
 from app.core.database import get_db
@@ -15,7 +16,7 @@ router = APIRouter()
 @router.get("/passengers", response_model=list[schemas.UserInDB])
 async def get_todays_passengers(
     db: AsyncSession = Depends(get_db),
-    current_driver: models.Driver = Depends(get_current_driver),
+    current_driver: models.User = Depends(get_current_driver),
 ):
     """
     Get the list of passengers for the driver's current trip.
@@ -40,11 +41,30 @@ async def get_todays_passengers(
     passengers = result.scalars().all()
     return passengers
 
+@router.get("/trips/{trip_id}/passengers", response_model=List[schemas.booking.PassengerBookingDetails])
+async def get_passengers_for_trip(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_driver: models.User = Depends(get_current_driver),
+):
+    """
+    Get the list of passengers for a specific trip assigned to the current driver.
+    """
+    # Authorization: Check if the trip belongs to the current driver
+    trip = await crud.trip.get(db, id=trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found.")
+    if trip.driver_id != current_driver.id:
+        raise HTTPException(status_code=403, detail="You are not authorized to view passengers for this trip.")
+
+    bookings = await crud.booking.get_multi_by_trip_id(db, trip_id=trip_id)
+    return bookings
+
 @router.post("/scan")
 async def scan_qr_code(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_driver: models.Driver = Depends(get_current_driver),
+    current_driver: models.User = Depends(get_current_driver),
 ):
     """
     Scan a passenger's QR code to mark them as boarded.

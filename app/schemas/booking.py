@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from app.schemas.user import UserInDB
 
 class BookingBase(BaseModel):
     trip_id: int
@@ -23,3 +24,6 @@ class BookingInDB(BookingBase):
 
 class BookingWithQR(BookingInDB):
     qr_code_png_base64: Optional[str] = None
+
+class PassengerBookingDetails(BookingInDB):
+    passenger: UserInDB

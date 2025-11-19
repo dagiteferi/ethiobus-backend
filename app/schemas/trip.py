@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+from .bus import BusInDB
+
 class TripBase(BaseModel):
     bus_id: int
     route_id: int
@@ -18,3 +20,6 @@ class TripInDB(TripBase):
 
     class Config:
         from_attributes = True
+
+class TripDetails(TripInDB):
+    bus: BusInDB

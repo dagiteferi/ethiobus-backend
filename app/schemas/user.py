@@ -7,7 +7,7 @@ class UserBase(BaseModel):
     phone: str = Field(..., pattern=r"^09\d{8}$")
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., max_length=72)
     role: str = "passenger"
 
 class UserInDB(UserBase):
@@ -34,3 +34,11 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class DriverWithBusCreate(UserBase):
+    password: str = Field(..., max_length=72)
+    license_number: str
+    # Bus details
+    plate_number: str
+    model: str
+    total_seats: int

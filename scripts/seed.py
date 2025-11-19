@@ -1,0 +1,134 @@
+
+import sys
+import os
+import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from app.core.database import AsyncSessionLocal as SessionLocal
+from app.models.user import Admin, Driver, Passenger
+from app.models.bus import Bus
+from app.models.route import Route
+from app.models.trip import Trip
+from app.core.security import get_password_hash
+from datetime import datetime, timedelta
+
+async def seed_data():
+    """
+    Seeds the database with initial data.
+    """
+    db: AsyncSession = SessionLocal()
+    try:
+        # Create Admins
+        admin1 = Admin(
+            username="admin1",
+            full_name="Admin User 1",
+            phone="0911111111",
+            password_hash=get_password_hash("adminpass1"),
+        )
+        admin2 = Admin(
+            username="admin2",
+            full_name="Admin User 2",
+            phone="0922222222",
+            password_hash=get_password_hash("adminpass2"),
+        )
+        db.add_all([admin1, admin2])
+        await db.commit()
+
+        # Create Buses
+        bus1 = Bus(plate_number="AA-A1234", model="Toyota Coaster", total_seats=28)
+        bus2 = Bus(plate_number="OR-B5678", model="Fuso Canter", total_seats=32)
+        bus3 = Bus(plate_number="AM-C9101", model="Golden Dragon", total_seats=45)
+        db.add_all([bus1, bus2, bus3])
+        await db.commit()
+
+        # Create Drivers
+        driver1 = Driver(
+            username="driver1",
+            full_name="Abebe Bikila",
+            phone="0933333333",
+            password_hash=get_password_hash("driverpass1"),
+            license_number="DRV12345",
+            assigned_bus_id=bus1.id,
+        )
+        driver2 = Driver(
+            username="driver2",
+            full_name="Fatuma Roba",
+            phone="0944444444",
+            password_hash=get_password_hash("driverpass2"),
+            license_number="DRV54321",
+            assigned_bus_id=bus2.id,
+        )
+        db.add_all([driver1, driver2])
+        await db.commit()
+
+        # Create Passengers
+        passenger1 = Passenger(
+            username="passenger1",
+            full_name="Haile Gebrselassie",
+            phone="0955555555",
+            password_hash=get_password_hash("pass1"),
+        )
+        passenger2 = Passenger(
+            username="passenger2",
+            full_name="Tirunesh Dibaba",
+            phone="0966666666",
+            password_hash=get_password_hash("pass2"),
+        )
+        db.add_all([passenger1, passenger2])
+        await db.commit()
+
+        # Create Routes
+        route1 = Route(
+            origin="Addis Ababa",
+            destination="Bahir Dar",
+            distance_km=560,
+            avg_duration_min=7 * 60,
+        )
+        route2 = Route(
+            origin="Addis Ababa",
+            destination="Hawassa",
+            distance_km=275,
+            avg_duration_min=4 * 60,
+        )
+        route3 = Route(
+            origin="Gondar",
+            destination="Axum",
+            distance_km=180,
+            avg_duration_min=3 * 60,
+        )
+        db.add_all([route1, route2, route3])
+        await db.commit()
+
+        # Create Trips
+        now = datetime.utcnow()
+        trip1 = Trip(
+            bus_id=bus1.id,
+            route_id=route1.id,
+            driver_id=driver1.id,
+            departure_time=now + timedelta(days=1, hours=2),
+            arrival_time=now + timedelta(days=1, hours=9),
+            base_price_etb=800.00,
+            available_seats=bus1.total_seats,
+        )
+        trip2 = Trip(
+            bus_id=bus2.id,
+            route_id=route2.id,
+            driver_id=driver2.id,
+            departure_time=now + timedelta(days=1, hours=4),
+            arrival_time=now + timedelta(days=1, hours=8),
+            base_price_etb=450.00,
+            available_seats=bus2.total_seats,
+        )
+        db.add_all([trip1, trip2])
+        await db.commit()
+
+        print("Database seeded successfully!")
+
+    finally:
+        await db.close()
+
+if __name__ == "__main__":
+    asyncio.run(seed_data())
