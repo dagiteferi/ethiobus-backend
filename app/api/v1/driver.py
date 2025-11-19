@@ -1,0 +1,86 @@
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from datetime import date
+import cv2
+import numpy as np
+
+from app import crud, models, schemas
+from app.core.database import get_db
+from app.dependencies import get_current_driver
+from app.services import qr_service
+
+router = APIRouter()
+
+@router.get("/passengers", response_model=list[schemas.UserInDB])
+async def get_todays_passengers(
+    db: AsyncSession = Depends(get_db),
+    current_driver: models.Driver = Depends(get_current_driver),
+):
+    """
+    Get the list of passengers for the driver's current trip.
+    """
+    # Find the driver's trip for today
+    result = await db.execute(
+        select(models.Trip)
+        .where(models.Trip.driver_id == current_driver.id)
+        .where(func.date(models.Trip.departure_time) == date.today())
+    )
+    trip = result.scalars().first()
+
+    if not trip:
+        raise HTTPException(status_code=404, detail="No trip assigned for today.")
+
+    # Get passengers for that trip
+    result = await db.execute(
+        select(models.User)
+        .join(models.Booking)
+        .where(models.Booking.trip_id == trip.id)
+    )
+    passengers = result.scalars().all()
+    return passengers
+
+@router.post("/scan")
+async def scan_qr_code(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_driver: models.Driver = Depends(get_current_driver),
+):
+    """
+    Scan a passenger's QR code to mark them as boarded.
+    """
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    detector = cv2.QRCodeDetector()
+    data, bbox, straight_qrcode = detector.detectAndDecode(img)
+
+    if not data:
+        raise HTTPException(status_code=400, detail="Could not decode QR code.")
+
+    payload = qr_service.verify_qr_token(data)
+    if not payload:
+        raise HTTPException(status_code=400, detail="Invalid QR code token.")
+
+    booking_id = payload.get("booking_id")
+    booking = await crud.booking.get(db, id=booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    # Check if the booking belongs to one of the driver's trips for today
+    result = await db.execute(
+        select(models.Trip)
+        .where(models.Trip.driver_id == current_driver.id)
+        .where(models.Trip.id == booking.trip_id)
+        .where(func.date(models.Trip.departure_time) == date.today())
+    )
+    trip = result.scalars().first()
+    
+    if not trip:
+        raise HTTPException(status_code=403, detail="Booking is not for one of your trips today.")
+
+    booking.is_boarded = True
+    await db.commit()
+
+    return {"status": "success", "detail": f"Passenger for booking {booking_id} boarded."}
