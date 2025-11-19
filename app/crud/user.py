@@ -9,13 +9,17 @@ from app.schemas.user import UserCreate, DriverWithBusCreate, UserCreate as User
 from app.core.security import get_password_hash
 
 class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
-    async def get_by_username(self, db: AsyncSession, *, username: str) -> Optional[User]:
-        result = await db.execute(select(self.model).filter(self.model.username == username))
+    async def get_by_email(self, db: AsyncSession, *, email: str) -> Optional[User]:
+        result = await db.execute(select(self.model).filter(self.model.email == email))
+        return result.scalars().first()
+
+    async def get_by_phone(self, db: AsyncSession, *, phone: str) -> Optional[User]:
+        result = await db.execute(select(self.model).filter(self.model.phone == phone))
         return result.scalars().first()
 
     async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> User:
         db_obj = self.model(
-            username=obj_in.username,
+            email=obj_in.email,
             full_name=obj_in.full_name,
             phone=obj_in.phone,
             password_hash=get_password_hash(obj_in.password),

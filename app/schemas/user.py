@@ -2,9 +2,10 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 class UserBase(BaseModel):
-    username: str
+    email: str
     full_name: str
     phone: str = Field(..., pattern=r"^09\d{8}$")
+    username: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str = Field(..., max_length=72)
