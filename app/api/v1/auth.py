@@ -35,7 +35,7 @@ async def register(
     user = await crud.user.create(db, obj_in=user_in)
     return user
 
-@router.post("/login", response_model=schemas.Token)
+@router.post("/login", response_model=schemas.TokenWithUser)
 async def login(
     db: AsyncSession = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -50,4 +50,4 @@ async def login(
             detail="Incorrect email or password",
         )
     access_token = create_access_token(subject=user.email)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "user": user}

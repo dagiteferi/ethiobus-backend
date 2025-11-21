@@ -1,4 +1,4 @@
-from .user import UserCreate, UserInDB, Token, TokenData, PassengerCreate, DriverCreate, AdminCreate
+from .user import UserCreate, UserInDB, Token, TokenData, PassengerCreate, DriverCreate, AdminCreate, TokenWithUser
 from .trip import TripCreate, TripInDB
 from .booking import BookingCreate, BookingInDB, BookingWithQR
 from .report import RevenueReport, OccupancyReport, TopRoutesReport
@@ -13,6 +13,7 @@ __all__ = [
     "PassengerCreate",
     "DriverCreate",
     "AdminCreate",
+    "TokenWithUser",
     "TripCreate",
     "TripInDB",
     "BookingCreate",
