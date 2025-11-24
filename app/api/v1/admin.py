@@ -182,15 +182,28 @@ async def delete_route(
     route = await crud.route.remove(db, id=route_id)
     return route
 
+@router.get("/driver", response_model=list[schemas.UserInDB])
+async def read_drivers(
+    db: AsyncSession = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Retrieve multiple drivers.
+    """
+    drivers = await crud.driver.get_multi(db, skip=skip, limit=limit)
+    return drivers
+
 @router.post("/driver", response_model=schemas.UserInDB)
 async def create_driver(
     *,
     db: AsyncSession = Depends(get_db),
-    driver_in: DriverCreate,
+    driver_in: schemas.DriverCreate,
     current_admin: models.User = Depends(get_current_admin),
 ):
     """
-    Create a new driver and assign them to an existing bus.
+    Create a new driver.
     """
     user = await crud.user.get_by_username(db, username=driver_in.username)
     if user:
@@ -198,7 +211,66 @@ async def create_driver(
             status_code=400,
             detail="The user with this username already exists in the system.",
         )
-    driver = await crud.user.create(db, obj_in=driver_in)
+    try:
+        driver = await crud.driver.create(db, obj_in=driver_in)
+        return driver
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="A driver with this email or license number already exists.",
+        )
+
+@router.get("/driver/{driver_id}", response_model=schemas.UserInDB)
+async def read_driver_by_id(
+    driver_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Retrieve a single driver by ID.
+    """
+    driver = await crud.driver.get(db, id=driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    return driver
+
+@router.put("/driver/{driver_id}", response_model=schemas.UserInDB)
+async def update_driver(
+    *,
+    driver_id: int,
+    db: AsyncSession = Depends(get_db),
+    driver_in: schemas.DriverUpdate,
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Update an existing driver.
+    """
+    driver = await crud.driver.get(db, id=driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    try:
+        driver = await crud.driver.update(db, db_obj=driver, obj_in=driver_in)
+        return driver
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="A driver with this email or license number already exists.",
+        )
+
+@router.delete("/driver/{driver_id}", response_model=schemas.UserInDB)
+async def delete_driver(
+    *,
+    driver_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Delete a driver.
+    """
+    driver = await crud.driver.get(db, id=driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    driver = await crud.driver.remove(db, id=driver_id)
     return driver
 
 @router.post("/driver-with-bus", response_model=schemas.UserInDB)
