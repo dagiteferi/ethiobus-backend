@@ -42,15 +42,17 @@ async def seed_data():
 
         # Create Admins
         admin1 = Admin(
-            username="admin1",
+            username="admin1_seed", # Changed username
+            email="admin1@example.com",
             full_name="Admin User 1",
-            phone="0911111111",
+            phone="0911111112",
             password_hash=get_password_hash("adminpass1"),
         )
         admin2 = Admin(
-            username="admin2",
+            username="admin2_seed", # Changed username
+            email="admin2@example.com",
             full_name="Admin User 2",
-            phone="0922222222",
+            phone="0922222223",
             password_hash=get_password_hash("adminpass2"),
         )
         db.add_all([admin1, admin2])
@@ -66,6 +68,7 @@ async def seed_data():
         # Create Drivers
         driver1 = Driver(
             username="driver1",
+            email="driver1@example.com", # Added email
             full_name="Abebe Bikila",
             phone="0933333333",
             password_hash=get_password_hash("driverpass1"),
@@ -74,6 +77,7 @@ async def seed_data():
         )
         driver2 = Driver(
             username="driver2",
+            email="driver2@example.com", # Added email
             full_name="Fatuma Roba",
             phone="0944444444",
             password_hash=get_password_hash("driverpass2"),
