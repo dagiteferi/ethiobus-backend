@@ -1,9 +1,10 @@
-from .user import UserCreate, UserInDB, Token, TokenData, PassengerCreate, DriverCreate, AdminCreate, TokenWithUser
+from .user import UserCreate, UserInDB, Token, TokenData, PassengerCreate, DriverCreate, AdminCreate, TokenWithUser, DriverWithBusCreate
 from .trip import TripCreate, TripInDB
 from .booking import BookingCreate, BookingInDB, BookingWithQR
 from .report import RevenueReport, OccupancyReport, TopRoutesReport
-from .bus import BusCreate, BusInDB
+from .bus import BusCreate, BusInDB, BusUpdate
 from .route import RouteCreate, RouteInDB
+from .driver import DriverRouteAssignment # Assuming this is where DriverRouteAssignment is defined
 
 __all__ = [
     "UserCreate",
@@ -14,6 +15,7 @@ __all__ = [
     "DriverCreate",
     "AdminCreate",
     "TokenWithUser",
+    "DriverWithBusCreate", # Added
     "TripCreate",
     "TripInDB",
     "BookingCreate",
@@ -24,6 +26,8 @@ __all__ = [
     "TopRoutesReport",
     "BusCreate",
     "BusInDB",
+    "BusUpdate", # Added
     "RouteCreate",
     "RouteInDB",
+    "DriverRouteAssignment", # Added
 ]

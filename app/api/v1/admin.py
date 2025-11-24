@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud, models, schemas
@@ -21,7 +22,79 @@ async def create_bus(
     """
     Create a new bus.
     """
-    bus = await crud.bus.create(db, obj_in=bus_in)
+    try:
+        bus = await crud.bus.create(db, obj_in=bus_in)
+        return bus
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="A bus with this plate number already exists.",
+        )
+
+@router.get("/bus", response_model=list[schemas.BusInDB])
+async def read_buses(
+    db: AsyncSession = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Retrieve multiple buses.
+    """
+    buses = await crud.bus.get_multi(db, skip=skip, limit=limit)
+    return buses
+
+@router.get("/bus/{bus_id}", response_model=schemas.BusInDB)
+async def read_bus_by_id(
+    bus_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Retrieve a single bus by ID.
+    """
+    bus = await crud.bus.get(db, id=bus_id)
+    if not bus:
+        raise HTTPException(status_code=404, detail="Bus not found")
+    return bus
+
+@router.put("/bus/{bus_id}", response_model=schemas.BusInDB)
+async def update_bus(
+    *,
+    bus_id: int,
+    db: AsyncSession = Depends(get_db),
+    bus_in: schemas.BusUpdate,
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Update an existing bus.
+    """
+    bus = await crud.bus.get(db, id=bus_id)
+    if not bus:
+        raise HTTPException(status_code=404, detail="Bus not found")
+    try:
+        bus = await crud.bus.update(db, db_obj=bus, obj_in=bus_in)
+        return bus
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="A bus with this plate number already exists.",
+        )
+
+@router.delete("/bus/{bus_id}", response_model=schemas.BusInDB)
+async def delete_bus(
+    *,
+    bus_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Delete a bus.
+    """
+    bus = await crud.bus.get(db, id=bus_id)
+    if not bus:
+        raise HTTPException(status_code=404, detail="Bus not found")
+    bus = await crud.bus.remove(db, id=bus_id)
     return bus
 
 @router.post("/route", response_model=schemas.RouteInDB)

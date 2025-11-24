@@ -62,14 +62,25 @@ async def seed_data():
             }
         ]
 
+        created_admins = [] # New list to store admin objects
         for admin_data in admin_seed_data:
+            admin_obj = None
             try:
                 print(f"Attempting to create admin user: {admin_data['email']}")
                 admin_in = schemas.user.AdminCreate(**admin_data)
-                await crud.user.create(db, obj_in=admin_in)
+                admin_obj = await crud.user.create(db, obj_in=admin_in)
                 print(f"Successfully created admin user: {admin_data['email']}")
             except ValueError as e:
                 print(f"Skipping admin user '{admin_data['email']}' creation: {e}")
+                # If user already exists, retrieve it using any unique identifier
+                admin_obj = await crud.user.get_by_email(db, email=admin_data["email"])
+                if not admin_obj and admin_data.get("phone"):
+                    admin_obj = await crud.user.get_by_phone(db, phone=admin_data["phone"])
+                if not admin_obj and admin_data.get("username"):
+                    admin_obj = await crud.user.get_by_username(db, username=admin_data["username"])
+            
+            if admin_obj: # Ensure admin_obj is not None before appending
+                created_admins.append(admin_obj)
         await db.commit() # Commit after all admin creations
 
         # Create Buses
@@ -121,15 +132,30 @@ async def seed_data():
             }
         ]
 
+        created_drivers = []
         for driver_data in driver_seed_data:
-            existing_user = await crud.user.get_by_email(db, email=driver_data["email"])
-            if not existing_user:
-                print(f"Creating driver user: {driver_data['email']}")
+            driver_obj = None
+            try:
+                print(f"Attempting to create driver user: {driver_data['email']}")
                 driver_in = schemas.user.DriverCreate(**driver_data)
-                await crud.user.create(db, obj_in=driver_in)
-            else:
-                print(f"Driver user '{driver_data['email']}' already exists.")
+                driver_obj = await crud.user.create(db, obj_in=driver_in)
+                print(f"Successfully created driver user: {driver_data['email']}")
+            except ValueError as e:
+                print(f"Skipping driver user '{driver_data['email']}' creation: {e}")
+                # If user already exists, retrieve it using any unique identifier
+                driver_obj = await crud.user.get_by_email(db, email=driver_data["email"])
+                if not driver_obj and driver_data.get("phone"):
+                    driver_obj = await crud.user.get_by_phone(db, phone=driver_data["phone"])
+                if not driver_obj and driver_data.get("username"):
+                    driver_obj = await crud.user.get_by_username(db, username=driver_data["username"])
+            
+            if driver_obj: # Ensure driver_obj is not None before appending
+                created_drivers.append(driver_obj)
         await db.commit() # Commit after all driver creations
+
+        # Assign created/existing drivers to variables for later use
+        driver1 = created_drivers[0]
+        driver2 = created_drivers[1]
 
         # Create Passengers
         passenger_seed_data = [
@@ -151,14 +177,25 @@ async def seed_data():
             }
         ]
 
+        created_passengers = [] # New list to store passenger objects
         for passenger_data in passenger_seed_data:
-            existing_user = await crud.user.get_by_email(db, email=passenger_data["email"])
-            if not existing_user:
-                print(f"Creating passenger user: {passenger_data['email']}")
+            passenger_obj = None
+            try:
+                print(f"Attempting to create passenger user: {passenger_data['email']}")
                 passenger_in = schemas.user.PassengerCreate(**passenger_data)
-                await crud.user.create(db, obj_in=passenger_in)
-            else:
-                print(f"Passenger user '{passenger_data['email']}' already exists.")
+                passenger_obj = await crud.user.create(db, obj_in=passenger_in)
+                print(f"Successfully created passenger user: {passenger_data['email']}")
+            except ValueError as e:
+                print(f"Skipping passenger user '{passenger_data['email']}' creation: {e}")
+                # If user already exists, retrieve it using any unique identifier
+                passenger_obj = await crud.user.get_by_email(db, email=passenger_data["email"])
+                if not passenger_obj and passenger_data.get("phone"):
+                    passenger_obj = await crud.user.get_by_phone(db, phone=passenger_data["phone"])
+                if not passenger_obj and passenger_data.get("username"):
+                    passenger_obj = await crud.user.get_by_username(db, username=passenger_data["username"])
+            
+            if passenger_obj: # Ensure passenger_obj is not None before appending
+                created_passengers.append(passenger_obj)
         await db.commit() # Commit after all passenger creations
 
         # Create Routes
@@ -190,13 +227,14 @@ async def seed_data():
 
         # Create Trips
         now = datetime.utcnow()
+        # Create trips for today for easier testing
         trip_seed_data = [
             {
                 "bus_id": bus1.id,
                 "route_id": route1.id,
                 "driver_id": driver1.id,
-                "departure_time": now + timedelta(days=1, hours=2),
-                "arrival_time": now + timedelta(days=1, hours=9),
+                "departure_time": now + timedelta(hours=2), # For today
+                "arrival_time": now + timedelta(hours=9),   # For today
                 "base_price_etb": 800.00,
                 "available_seats": bus1.total_seats,
             },
@@ -204,8 +242,8 @@ async def seed_data():
                 "bus_id": bus2.id,
                 "route_id": route2.id,
                 "driver_id": driver2.id,
-                "departure_time": now + timedelta(days=1, hours=4),
-                "arrival_time": now + timedelta(days=1, hours=8),
+                "departure_time": now + timedelta(hours=4), # For today
+                "arrival_time": now + timedelta(hours=8),   # For today
                 "base_price_etb": 450.00,
                 "available_seats": bus2.total_seats,
             },

@@ -33,10 +33,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return result.scalars().all()
 
     async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
-        obj_in_data = jsonable_encoder(obj_in)
+        obj_in_data = obj_in.dict() # Use .dict() to retain datetime objects
         db_obj = self.model(**obj_in_data)  # type: ignore
         db.add(db_obj)
-        await db.commit()
+        await db.flush() # Use flush instead of commit for external transaction management
         await db.refresh(db_obj)
         return db_obj
 
@@ -47,16 +47,15 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db_obj: ModelType,
         obj_in: Union[UpdateSchemaType, Dict[str, Any]]
     ) -> ModelType:
-        obj_data = jsonable_encoder(db_obj)
+        obj_data = jsonable_encoder(db_obj) # Keep jsonable_encoder for existing data
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
-            update_data = obj_in.dict(exclude_unset=True)
-        for field in obj_data:
-            if field in update_data:
-                setattr(db_obj, field, update_data[field])
+            update_data = obj_in.model_dump(exclude_unset=True) # Use model_dump for Pydantic v2
+        for field in update_data:
+            setattr(db_obj, field, update_data[field])
         db.add(db_obj)
-        await db.commit()
+        await db.flush() # Use flush instead of commit for external transaction management
         await db.refresh(db_obj)
         return db_obj
 
@@ -64,5 +63,5 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         result = await db.execute(select(self.model).filter(self.model.id == id))
         obj = result.scalars().first()
         await db.delete(obj)
-        await db.commit()
+        await db.flush() # Use flush instead of commit for external transaction management
         return obj

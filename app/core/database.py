@@ -17,4 +17,9 @@ async def get_db() -> AsyncSession:
     Dependency to get an async database session.
     """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()  # Explicitly commit the transaction
+        except Exception:
+            await session.rollback() # Rollback on error
+            raise
