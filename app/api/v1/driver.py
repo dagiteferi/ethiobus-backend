@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import date
 import cv2
 import numpy as np
-from typing import List # New import
+from typing import List
 
 from app import crud, models, schemas
 from app.core.database import get_db
@@ -12,6 +12,22 @@ from app.dependencies import get_current_driver
 from app.services import qr_service
 
 router = APIRouter()
+
+@router.get("/trips", response_model=List[schemas.TripInDB])
+async def get_driver_trips(
+    db: AsyncSession = Depends(get_db),
+    current_driver: models.User = Depends(get_current_driver),
+):
+    """
+    Get all trips for the current driver for today.
+    """
+    result = await db.execute(
+        select(models.Trip)
+        .where(models.Trip.driver_id == current_driver.id)
+        .where(func.date(models.Trip.departure_time) == date.today())
+    )
+    trips = result.scalars().all()
+    return trips
 
 @router.get("/passengers", response_model=list[schemas.UserInDB])
 async def get_todays_passengers(
@@ -87,6 +103,45 @@ async def scan_qr_code(
     booking = await crud.booking.get(db, id=booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found.")
+
+    # Check if the booking belongs to one of the driver's trips for today
+    result = await db.execute(
+        select(models.Trip)
+        .where(models.Trip.driver_id == current_driver.id)
+        .where(models.Trip.id == booking.trip_id)
+        .where(func.date(models.Trip.departure_time) == date.today())
+    )
+    trip = result.scalars().first()
+    
+    if not trip:
+        raise HTTPException(status_code=403, detail="Booking is not for one of your trips today.")
+
+    booking.is_boarded = True
+    await db.commit()
+
+    return {"status": "success", "detail": f"Passenger for booking {booking_id} boarded."}
+
+@router.post("/scan-token")
+async def scan_qr_token(
+    request: dict,
+    db: AsyncSession = Depends(get_db),
+    current_driver: models.User = Depends(get_current_driver),
+):
+    """
+    Scan a passenger's QR code token (when already decoded from QR scanner).
+    """
+    qr_token = request.get("qr_token")
+    if not qr_token:
+        raise HTTPException(status_code=400, detail="QR token is required.")
+    
+    payload = qr_service.verify_qr_token(qr_token)
+    if not payload:
+        raise HTTPException(status_code=400, detail="Invalid QR code token.")
+
+    booking_id = payload.get("booking_id")
+    booking = await crud.booking.get(db, id=booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not. found.")
 
     # Check if the booking belongs to one of the driver's trips for today
     result = await db.execute(

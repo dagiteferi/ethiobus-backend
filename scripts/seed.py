@@ -13,6 +13,7 @@ from app.models.bus import Bus
 from app.models.route import Route
 from app.models.trip import Trip
 from app.core.security import get_password_hash
+from app import crud, schemas
 from datetime import datetime, timedelta
 
 async def seed_data():
@@ -21,6 +22,24 @@ async def seed_data():
     """
     db: AsyncSession = SessionLocal()
     try:
+        # Create default admin user if not exists
+        default_admin_email = "admin@gmail.com"
+        existing_admin = await crud.user.get_by_email(db, email=default_admin_email)
+        if not existing_admin:
+            print(f"Creating default admin user: {default_admin_email}")
+            admin_in = schemas.user.AdminCreate(
+                email=default_admin_email,
+                full_name="Default Admin",
+                phone="0900000000", # Placeholder phone number
+                username="default_admin",
+                password="admin@1234",
+                role="admin"
+            )
+            await crud.user.create(db, obj_in=admin_in)
+            await db.commit()
+        else:
+            print(f"Default admin user '{default_admin_email}' already exists.")
+
         # Create Admins
         admin1 = Admin(
             username="admin1",

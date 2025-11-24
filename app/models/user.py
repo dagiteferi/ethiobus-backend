@@ -3,9 +3,18 @@ from sqlalchemy import (
     Integer,
     String,
     ForeignKey,
+    Table,
 )
 from sqlalchemy.orm import relationship
 from app.models.base import Base
+
+driver_route_association = Table(
+    "driver_route",
+    Base.metadata,
+    Column("driver_id", Integer, ForeignKey("users.id")),
+    Column("route_id", Integer, ForeignKey("routes.id")),
+)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -36,6 +45,7 @@ class Driver(User):
     
     assigned_bus = relationship("Bus", back_populates="drivers")
     trips = relationship("Trip", back_populates="driver")
+    routes = relationship("Route", secondary=driver_route_association, back_populates="drivers")
 
     __mapper_args__ = {
         "polymorphic_identity": "driver",

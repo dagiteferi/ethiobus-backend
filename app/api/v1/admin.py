@@ -7,6 +7,7 @@ from app.dependencies import get_current_admin
 from app.schemas.user import DriverCreate, DriverWithBusCreate
 from app.schemas.bus import BusCreate
 from app.schemas.route import RouteCreate
+from app.schemas.driver import DriverRouteAssignment
 
 router = APIRouter()
 
@@ -80,4 +81,21 @@ async def create_driver_and_bus(
         )
 
     driver = await crud.user.create_driver_with_bus(db, obj_in=driver_bus_in)
+    return driver
+
+@router.post("/driver/assign-routes", response_model=schemas.UserInDB)
+async def assign_routes_to_driver(
+    *,
+    db: AsyncSession = Depends(get_db),
+    assignment: DriverRouteAssignment,
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Assign routes to a driver.
+    """
+    driver = await crud.driver.assign_routes_to_driver(
+        db, driver_id=assignment.driver_id, route_ids=assignment.route_ids
+    )
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
     return driver

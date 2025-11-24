@@ -7,7 +7,6 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.crud.user import user as crud_user
 from app.models.user import User, Passenger, Driver, Admin
-from app.schemas.user import TokenData
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -23,14 +22,14 @@ async def get_current_user(
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        username: str = payload.get("sub")
-        if username is None:
+        email: str = payload.get("sub")  # The token subject is the email
+        if email is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
     
-    user = await crud_user.get_by_username(db, username=token_data.username)
+    # Get user by email (the token subject is the email)
+    user = await crud_user.get_by_email(db, email=email)
     if user is None:
         raise credentials_exception
     return user
