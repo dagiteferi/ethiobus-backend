@@ -114,20 +114,34 @@ async def seed_data():
         await db.commit() # Commit after all driver creations
 
         # Create Passengers
-        passenger1 = Passenger(
-            username="passenger1",
-            full_name="Haile Gebrselassie",
-            phone="0955555555",
-            password_hash=get_password_hash("pass1"),
-        )
-        passenger2 = Passenger(
-            username="passenger2",
-            full_name="Tirunesh Dibaba",
-            phone="0966666666",
-            password_hash=get_password_hash("pass2"),
-        )
-        db.add_all([passenger1, passenger2])
-        await db.commit()
+        passenger_seed_data = [
+            {
+                "username": "passenger1",
+                "email": "passenger1@example.com", # Added email
+                "full_name": "Haile Gebrselassie",
+                "phone": "0955555555",
+                "password": "pass1",
+                "role": "passenger"
+            },
+            {
+                "username": "passenger2",
+                "email": "passenger2@example.com", # Added email
+                "full_name": "Tirunesh Dibaba",
+                "phone": "0966666666",
+                "password": "pass2",
+                "role": "passenger"
+            }
+        ]
+
+        for passenger_data in passenger_seed_data:
+            existing_user = await crud.user.get_by_email(db, email=passenger_data["email"])
+            if not existing_user:
+                print(f"Creating passenger user: {passenger_data['email']}")
+                passenger_in = schemas.user.PassengerCreate(**passenger_data)
+                await crud.user.create(db, obj_in=passenger_in)
+            else:
+                print(f"Passenger user '{passenger_data['email']}' already exists.")
+        await db.commit() # Commit after all passenger creations
 
         # Create Routes
         route1 = Route(
