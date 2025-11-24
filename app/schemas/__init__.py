@@ -3,7 +3,7 @@ from .trip import TripCreate, TripInDB
 from .booking import BookingCreate, BookingInDB, BookingWithQR
 from .report import RevenueReport, OccupancyReport, TopRoutesReport
 from .bus import BusCreate, BusInDB, BusUpdate
-from .route import RouteCreate, RouteInDB
+from .route import RouteCreate, RouteInDB, RouteUpdate
 from .driver import DriverRouteAssignment # Assuming this is where DriverRouteAssignment is defined
 
 __all__ = [
@@ -29,5 +29,6 @@ __all__ = [
     "BusUpdate", # Added
     "RouteCreate",
     "RouteInDB",
+    "RouteUpdate", # Added
     "DriverRouteAssignment", # Added
 ]

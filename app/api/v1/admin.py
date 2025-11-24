@@ -97,17 +97,89 @@ async def delete_bus(
     bus = await crud.bus.remove(db, id=bus_id)
     return bus
 
+@router.get("/route", response_model=list[schemas.RouteInDB])
+async def read_routes(
+    db: AsyncSession = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Retrieve multiple routes.
+    """
+    routes = await crud.route.get_multi(db, skip=skip, limit=limit)
+    return routes
+
 @router.post("/route", response_model=schemas.RouteInDB)
 async def create_route(
     *,
     db: AsyncSession = Depends(get_db),
-    route_in: RouteCreate,
+    route_in: schemas.RouteCreate, # Use schemas.RouteCreate
     current_admin: models.User = Depends(get_current_admin),
 ):
     """
     Create a new route.
     """
-    route = await crud.route.create(db, obj_in=route_in)
+    try:
+        route = await crud.route.create(db, obj_in=route_in)
+        return route
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="A route with this origin and destination already exists.",
+        )
+
+@router.get("/route/{route_id}", response_model=schemas.RouteInDB)
+async def read_route_by_id(
+    route_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Retrieve a single route by ID.
+    """
+    route = await crud.route.get(db, id=route_id)
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    return route
+
+@router.put("/route/{route_id}", response_model=schemas.RouteInDB)
+async def update_route(
+    *,
+    route_id: int,
+    db: AsyncSession = Depends(get_db),
+    route_in: schemas.RouteUpdate, # Use schemas.RouteUpdate
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Update an existing route.
+    """
+    route = await crud.route.get(db, id=route_id)
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    try:
+        route = await crud.route.update(db, db_obj=route, obj_in=route_in)
+        return route
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="A route with this origin and destination already exists.",
+        )
+
+@router.delete("/route/{route_id}", response_model=schemas.RouteInDB)
+async def delete_route(
+    *,
+    route_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin),
+):
+    """
+    Delete a route.
+    """
+    route = await crud.route.get(db, id=route_id)
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    route = await crud.route.remove(db, id=route_id)
     return route
 
 @router.post("/driver", response_model=schemas.UserInDB)
