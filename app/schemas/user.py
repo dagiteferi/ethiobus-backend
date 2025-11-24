@@ -39,6 +39,15 @@ class TokenWithUser(Token):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
+class DriverUpdate(UserBase):
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    phone: Optional[str] = Field(None, pattern=r"^09\d{8}$")
+    username: Optional[str] = None
+    password: Optional[str] = Field(None, max_length=72) # Password can be updated
+    license_number: Optional[str] = None
+    assigned_bus_id: Optional[int] = None
+
 class DriverWithBusCreate(UserBase):
     password: str = Field(..., max_length=72)
     license_number: str
