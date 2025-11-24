@@ -63,21 +63,39 @@ async def seed_data():
         ]
 
         for admin_data in admin_seed_data:
-            existing_user = await crud.user.get_by_email(db, email=admin_data["email"])
-            if not existing_user:
-                print(f"Creating admin user: {admin_data['email']}")
+            try:
+                print(f"Attempting to create admin user: {admin_data['email']}")
                 admin_in = schemas.user.AdminCreate(**admin_data)
                 await crud.user.create(db, obj_in=admin_in)
-            else:
-                print(f"Admin user '{admin_data['email']}' already exists.")
+                print(f"Successfully created admin user: {admin_data['email']}")
+            except ValueError as e:
+                print(f"Skipping admin user '{admin_data['email']}' creation: {e}")
         await db.commit() # Commit after all admin creations
 
         # Create Buses
-        bus1 = Bus(plate_number="AA-A1234", model="Toyota Coaster", total_seats=28)
-        bus2 = Bus(plate_number="OR-B5678", model="Fuso Canter", total_seats=32)
-        bus3 = Bus(plate_number="AM-C9101", model="Golden Dragon", total_seats=45)
-        db.add_all([bus1, bus2, bus3])
+        bus_seed_data = [
+            {"plate_number": "AA-A1234", "model": "Toyota Coaster", "total_seats": 28},
+            {"plate_number": "OR-B5678", "model": "Fuso Canter", "total_seats": 32},
+            {"plate_number": "AM-C9101", "model": "Golden Dragon", "total_seats": 45},
+        ]
+
+        created_buses = []
+        for bus_data in bus_seed_data:
+            existing_bus = await crud.bus.get_by_plate_number(db, plate_number=bus_data["plate_number"])
+            if not existing_bus:
+                print(f"Creating bus with plate number: {bus_data['plate_number']}")
+                bus_in = schemas.bus.BusCreate(**bus_data)
+                new_bus = await crud.bus.create(db, obj_in=bus_in)
+                created_buses.append(new_bus)
+            else:
+                print(f"Bus with plate number '{bus_data['plate_number']}' already exists.")
+                created_buses.append(existing_bus)
         await db.commit()
+
+        # Assign created/existing buses to variables for later use
+        bus1 = created_buses[0]
+        bus2 = created_buses[1]
+        bus3 = created_buses[2]
 
         # Create Drivers
         driver_seed_data = [
@@ -144,48 +162,68 @@ async def seed_data():
         await db.commit() # Commit after all passenger creations
 
         # Create Routes
-        route1 = Route(
-            origin="Addis Ababa",
-            destination="Bahir Dar",
-            distance_km=560,
-            avg_duration_min=7 * 60,
-        )
-        route2 = Route(
-            origin="Addis Ababa",
-            destination="Hawassa",
-            distance_km=275,
-            avg_duration_min=4 * 60,
-        )
-        route3 = Route(
-            origin="Gondar",
-            destination="Axum",
-            distance_km=180,
-            avg_duration_min=3 * 60,
-        )
-        db.add_all([route1, route2, route3])
+        route_seed_data = [
+            {"origin": "Addis Ababa", "destination": "Bahir Dar", "distance_km": 560, "avg_duration_min": 7 * 60},
+            {"origin": "Addis Ababa", "destination": "Hawassa", "distance_km": 275, "avg_duration_min": 4 * 60},
+            {"origin": "Gondar", "destination": "Axum", "distance_km": 180, "avg_duration_min": 3 * 60},
+        ]
+
+        created_routes = []
+        for route_data in route_seed_data:
+            existing_route = await crud.route.get_by_source_and_destination(
+                db, source=route_data["origin"], destination=route_data["destination"]
+            )
+            if not existing_route:
+                print(f"Creating route from {route_data['origin']} to {route_data['destination']}")
+                route_in = schemas.route.RouteCreate(**route_data)
+                new_route = await crud.route.create(db, obj_in=route_in)
+                created_routes.append(new_route)
+            else:
+                print(f"Route from {route_data['origin']} to {route_data['destination']} already exists.")
+                created_routes.append(existing_route)
         await db.commit()
+
+        # Assign created/existing routes to variables for later use
+        route1 = created_routes[0]
+        route2 = created_routes[1]
+        route3 = created_routes[2]
 
         # Create Trips
         now = datetime.utcnow()
-        trip1 = Trip(
-            bus_id=bus1.id,
-            route_id=route1.id,
-            driver_id=driver1.id,
-            departure_time=now + timedelta(days=1, hours=2),
-            arrival_time=now + timedelta(days=1, hours=9),
-            base_price_etb=800.00,
-            available_seats=bus1.total_seats,
-        )
-        trip2 = Trip(
-            bus_id=bus2.id,
-            route_id=route2.id,
-            driver_id=driver2.id,
-            departure_time=now + timedelta(days=1, hours=4),
-            arrival_time=now + timedelta(days=1, hours=8),
-            base_price_etb=450.00,
-            available_seats=bus2.total_seats,
-        )
-        db.add_all([trip1, trip2])
+        trip_seed_data = [
+            {
+                "bus_id": bus1.id,
+                "route_id": route1.id,
+                "driver_id": driver1.id,
+                "departure_time": now + timedelta(days=1, hours=2),
+                "arrival_time": now + timedelta(days=1, hours=9),
+                "base_price_etb": 800.00,
+                "available_seats": bus1.total_seats,
+            },
+            {
+                "bus_id": bus2.id,
+                "route_id": route2.id,
+                "driver_id": driver2.id,
+                "departure_time": now + timedelta(days=1, hours=4),
+                "arrival_time": now + timedelta(days=1, hours=8),
+                "base_price_etb": 450.00,
+                "available_seats": bus2.total_seats,
+            },
+        ]
+
+        for trip_data in trip_seed_data:
+            existing_trip = await crud.trip.get_by_details(
+                db,
+                bus_id=trip_data["bus_id"],
+                route_id=trip_data["route_id"],
+                departure_time=trip_data["departure_time"],
+            )
+            if not existing_trip:
+                print(f"Creating trip for bus {trip_data['bus_id']} on route {trip_data['route_id']}")
+                trip_in = schemas.trip.TripCreate(**trip_data)
+                await crud.trip.create(db, obj_in=trip_in)
+            else:
+                print(f"Trip for bus {trip_data['bus_id']} on route {trip_data['route_id']} at {trip_data['departure_time']} already exists.")
         await db.commit()
 
         print("Database seeded successfully!")

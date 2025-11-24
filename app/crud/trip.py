@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from datetime import datetime
 
 from app.crud.base import CRUDBase
 from app.models.trip import Trip
@@ -15,5 +16,22 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
             .options(selectinload(self.model.bus))
         )
         return result.scalars().all()
+
+    async def get_by_details(
+        self,
+        db: AsyncSession,
+        *,
+        bus_id: int,
+        route_id: int,
+        departure_time: datetime
+    ) -> Optional[Trip]:
+        result = await db.execute(
+            select(self.model).filter(
+                self.model.bus_id == bus_id,
+                self.model.route_id == route_id,
+                self.model.departure_time == departure_time,
+            )
+        )
+        return result.scalars().first()
 
 trip = CRUDTrip(Trip)
