@@ -13,3 +13,4 @@ class Bus(Base):
 
     drivers = relationship("Driver", back_populates="assigned_bus")
     trips = relationship("Trip", back_populates="bus")
+    routes = relationship("Route", back_populates="bus") # Add routes relationship
