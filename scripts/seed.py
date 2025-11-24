@@ -41,22 +41,36 @@ async def seed_data():
             print(f"Default admin user '{default_admin_email}' already exists.")
 
         # Create Admins
-        admin1 = Admin(
-            username="admin1_seed", # Changed username
-            email="admin1@example.com",
-            full_name="Admin User 1",
-            phone="0911111112",
-            password_hash=get_password_hash("adminpass1"),
-        )
-        admin2 = Admin(
-            username="admin2_seed", # Changed username
-            email="admin2@example.com",
-            full_name="Admin User 2",
-            phone="0922222223",
-            password_hash=get_password_hash("adminpass2"),
-        )
-        db.add_all([admin1, admin2])
-        await db.commit()
+        # Create Admins
+        # Using crud.user.create for better handling of unique constraints
+        admin_seed_data = [
+            {
+                "username": "admin1_seed",
+                "email": "admin1@example.com",
+                "full_name": "Admin User 1",
+                "phone": "0911111112",
+                "password": "adminpass1",
+                "role": "admin"
+            },
+            {
+                "username": "admin2_seed",
+                "email": "admin2@example.com",
+                "full_name": "Admin User 2",
+                "phone": "0922222223",
+                "password": "adminpass2",
+                "role": "admin"
+            }
+        ]
+
+        for admin_data in admin_seed_data:
+            existing_user = await crud.user.get_by_email(db, email=admin_data["email"])
+            if not existing_user:
+                print(f"Creating admin user: {admin_data['email']}")
+                admin_in = schemas.user.AdminCreate(**admin_data)
+                await crud.user.create(db, obj_in=admin_in)
+            else:
+                print(f"Admin user '{admin_data['email']}' already exists.")
+        await db.commit() # Commit after all admin creations
 
         # Create Buses
         bus1 = Bus(plate_number="AA-A1234", model="Toyota Coaster", total_seats=28)
@@ -66,26 +80,38 @@ async def seed_data():
         await db.commit()
 
         # Create Drivers
-        driver1 = Driver(
-            username="driver1",
-            email="driver1@example.com", # Added email
-            full_name="Abebe Bikila",
-            phone="0933333333",
-            password_hash=get_password_hash("driverpass1"),
-            license_number="DRV12345",
-            assigned_bus_id=bus1.id,
-        )
-        driver2 = Driver(
-            username="driver2",
-            email="driver2@example.com", # Added email
-            full_name="Fatuma Roba",
-            phone="0944444444",
-            password_hash=get_password_hash("driverpass2"),
-            license_number="DRV54321",
-            assigned_bus_id=bus2.id,
-        )
-        db.add_all([driver1, driver2])
-        await db.commit()
+        driver_seed_data = [
+            {
+                "username": "driver1",
+                "email": "driver1@example.com",
+                "full_name": "Abebe Bikila",
+                "phone": "0933333333",
+                "password": "driverpass1",
+                "license_number": "DRV12345",
+                "assigned_bus_id": bus1.id,
+                "role": "driver"
+            },
+            {
+                "username": "driver2",
+                "email": "driver2@example.com",
+                "full_name": "Fatuma Roba",
+                "phone": "0944444444",
+                "password": "driverpass2",
+                "license_number": "DRV54321",
+                "assigned_bus_id": bus2.id,
+                "role": "driver"
+            }
+        ]
+
+        for driver_data in driver_seed_data:
+            existing_user = await crud.user.get_by_email(db, email=driver_data["email"])
+            if not existing_user:
+                print(f"Creating driver user: {driver_data['email']}")
+                driver_in = schemas.user.DriverCreate(**driver_data)
+                await crud.user.create(db, obj_in=driver_in)
+            else:
+                print(f"Driver user '{driver_data['email']}' already exists.")
+        await db.commit() # Commit after all driver creations
 
         # Create Passengers
         passenger1 = Passenger(
