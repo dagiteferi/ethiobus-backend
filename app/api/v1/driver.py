@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from datetime import date
 import cv2
 import numpy as np
@@ -13,7 +14,7 @@ from app.services import qr_service
 
 router = APIRouter()
 
-@router.get("/trips", response_model=List[schemas.TripInDB])
+@router.get("/trips", response_model=List[schemas.trip.TripDetailsWithDriver])
 async def get_driver_trips(
     db: AsyncSession = Depends(get_db),
     current_driver: models.User = Depends(get_current_driver),
@@ -24,7 +25,11 @@ async def get_driver_trips(
     result = await db.execute(
         select(models.Trip)
         .where(models.Trip.driver_id == current_driver.id)
-        .where(func.date(models.Trip.departure_time) == date.today())
+        .options(
+            selectinload(models.Trip.route),
+            selectinload(models.Trip.bus),
+            selectinload(models.Trip.driver)
+        )
     )
     trips = result.scalars().all()
     return trips

@@ -160,6 +160,128 @@ async def seed_ethiopia_data():
     finally:
         await db.close()
 
+async def create_golden_path_data(db: AsyncSession):
+    """
+    Creates a specific, predictable scenario for end-to-end testing.
+    """
+    print("\n--- Creating Golden Path Data for Testing ---")
+
+    # 1. Create Test Driver
+    test_driver_email = "driver.test@ethiobus.com"
+    existing_driver = await crud.user.get_by_email(db, email=test_driver_email)
+    if not existing_driver:
+        driver_in = schemas.DriverCreate(
+            email=test_driver_email,
+            password="password123",
+            full_name="Test Driver",
+            phone="0911223344",
+            license_number="GOLDEN123",
+            assigned_bus_id=None,
+            role="driver",
+            username="testdriver"
+        )
+        test_driver = await crud.driver.create(db, obj_in=driver_in)
+        print(f"Created Test Driver: {test_driver.email}")
+    else:
+        test_driver = existing_driver
+        print("Test Driver already exists.")
+
+    # 2. Create Test Passenger
+    test_passenger_email = "passenger.test@ethiobus.com"
+    existing_passenger = await crud.user.get_by_email(db, email=test_passenger_email)
+    if not existing_passenger:
+        passenger_in = schemas.PassengerCreate(
+            email=test_passenger_email,
+            password="password123",
+            full_name="Test Passenger",
+            phone="0955667788",
+            role="passenger",
+            username="testpassenger"
+        )
+        test_passenger = await crud.user.create(db, obj_in=passenger_in)
+        print(f"Created Test Passenger: {test_passenger.email}")
+    else:
+        test_passenger = existing_passenger
+        print("Test Passenger already exists.")
+
+    # 3. Create a specific Bus for the trip
+    test_bus_plate = "AA-GOLD-01"
+    existing_bus = await crud.bus.get_by_plate_number(db, plate_number=test_bus_plate)
+    if not existing_bus:
+        bus_in = schemas.BusCreate(
+            plate_number=test_bus_plate,
+            model="Golden Path Bus",
+            total_seats=50
+        )
+        test_bus = await crud.bus.create(db, obj_in=bus_in)
+        print(f"Created Test Bus: {test_bus.plate_number}")
+    else:
+        test_bus = existing_bus
+        print("Test Bus already exists.")
+
+    # 4. Create a specific Route
+    test_route_origin = "Addis Ababa"
+    test_route_destination = "Adama"
+    existing_route = await crud.route.get_by_source_and_destination(db, source=test_route_origin, destination=test_route_destination)
+    if not existing_route:
+        route_in = schemas.RouteCreate(
+            origin=test_route_origin,
+            destination=test_route_destination,
+            distance_km=100,
+            avg_duration_min=120
+        )
+        test_route = await crud.route.create(db, obj_in=route_in)
+        print(f"Created Test Route: {test_route.origin} to {test_route.destination}")
+    else:
+        test_route = existing_route
+        print("Test Route already exists.")
+
+    # 5. Create a specific Trip for today
+    test_trip_departure = datetime.utcnow() + timedelta(hours=3)
+    existing_trip = await crud.trip.get_by_details(db, bus_id=test_bus.id, route_id=test_route.id, departure_time=test_trip_departure)
+    if not existing_trip:
+        trip_in = schemas.TripCreate(
+            bus_id=test_bus.id,
+            route_id=test_route.id,
+            driver_id=test_driver.id,
+            departure_time=test_trip_departure,
+            arrival_time=test_trip_departure + timedelta(minutes=120),
+            base_price_etb=250.00,
+            available_seats=test_bus.total_seats,
+        )
+        test_trip = await crud.trip.create(db, obj_in=trip_in)
+        print(f"Created Test Trip for today from {test_route.origin} to {test_route.destination}")
+    else:
+        test_trip = existing_trip
+        print("Test Trip already exists.")
+
+    # 6. Create a booking for the test passenger on the test trip
+    # This part is tricky because create_with_seat_check does not commit.
+    # We will create it directly for simplicity in seeding.
+    try:
+        booking = await crud.booking.create_with_seat_check(
+            db,
+            trip_id=test_trip.id,
+            passenger_id=test_passenger.id,
+            seat_number="A1"
+        )
+        print(f"Booked seat A1 for {test_passenger.email} on trip {test_trip.id}")
+    except ValueError as e:
+        print(f"Could not create booking: {e}")
+
+
+    await db.commit()
+    print("--- Golden Path Data Creation Complete ---")
+
+
+async def main():
+    await seed_ethiopia_data()
+    db: AsyncSession = SessionLocal()
+    try:
+        await create_golden_path_data(db)
+    finally:
+        await db.close()
+
 if __name__ == "__main__":
     print("Running the Ethiopia data seeder...")
-    asyncio.run(seed_ethiopia_data())
+    asyncio.run(main())
