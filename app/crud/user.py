@@ -45,9 +45,6 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             role=obj_in.role,
             username=obj_in.username # Ensure username is set
         )
-        if obj_in.role == "driver" and hasattr(obj_in, 'license_number'):
-            db_obj.license_number = obj_in.license_number
-            db_obj.assigned_bus_id = obj_in.assigned_bus_id
 
         db.add(db_obj)
         # Removed await db.commit() - transaction management is now external

@@ -4,12 +4,26 @@ from typing import List
 
 from app import crud, models, schemas
 from app.core.database import get_db
-from app.dependencies import get_current_passenger
+from app.dependencies import get_current_passenger, get_current_user
 from app.services import qr_service, payment_service
 
 router = APIRouter()
 
-@router.get("/search", response_model=List[schemas.trip.TripDetails])
+@router.get("/trips/{trip_id}/details", response_model=schemas.trip.TripDetailsWithDriver)
+async def get_trip_details_with_driver(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Get detailed information about a trip, including public details of the driver and the bus.
+    """
+    trip = await crud.trip.get_with_driver_and_bus(db, trip_id=trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return trip
+
+@router.get("/search", response_model=List[schemas.trip.TripDetailsWithDriver])
 async def search_trips(
     source: str,
     destination: str,

@@ -21,3 +21,10 @@ class BusInDB(BusBase):
 
     class Config:
         from_attributes = True
+
+class BusPublic(BaseModel):
+    plate_number: str
+    model: str
+
+    class Config:
+        from_attributes = True

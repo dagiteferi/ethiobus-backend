@@ -3,6 +3,15 @@ from typing import List, Optional
 from app.schemas.user import UserInDB
 from app.schemas.route import RouteInDB
 
+class DriverPublic(BaseModel):
+    full_name: str
+    email: str
+    phone: str
+    license_number: str
+
+    class Config:
+        from_attributes = True
+
 class DriverRouteAssignment(BaseModel):
     driver_id: int
     route_ids: List[int]

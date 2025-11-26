@@ -205,19 +205,39 @@ async def create_driver(
     """
     Create a new driver.
     """
-    user = await crud.user.get_by_username(db, username=driver_in.username)
-    if user:
+    # Check for existing user by email (email is unique)
+    user_by_email = await crud.user.get_by_email(db, email=driver_in.email)
+    if user_by_email:
         raise HTTPException(
             status_code=400,
-            detail="The user with this username already exists in the system.",
+            detail="The user with this email already exists in the system.",
         )
+
+    # Check for existing driver by license number (license number is unique for drivers)
+    existing_driver_by_license = await crud.driver.get_by_license_number(db, license_number=driver_in.license_number)
+    if existing_driver_by_license:
+        raise HTTPException(
+            status_code=400,
+            detail="A driver with this license number already exists.",
+        )
+
+    # Check for existing user by username if provided and not empty
+    if driver_in.username:
+        user_by_username = await crud.user.get_by_username(db, username=driver_in.username)
+        if user_by_username:
+            raise HTTPException(
+                status_code=400,
+                detail="The user with this username already exists in the system.",
+            )
+
     try:
         driver = await crud.driver.create(db, obj_in=driver_in)
         return driver
     except IntegrityError:
+        # This catch is a fallback, as specific checks are done above
         raise HTTPException(
             status_code=400,
-            detail="A driver with this email or license number already exists.",
+            detail="An unexpected database integrity error occurred (e.g., duplicate email or license number).",
         )
 
 @router.get("/driver/{driver_id}", response_model=schemas.UserInDB)

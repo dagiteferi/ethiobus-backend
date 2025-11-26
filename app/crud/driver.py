@@ -12,6 +12,10 @@ from app.schemas.user import DriverCreate, DriverUpdate # Import DriverCreate an
 from app.core import security # Import security for password hashing
 
 class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
+    async def get_by_license_number(self, db: AsyncSession, *, license_number: str) -> Optional[Driver]:
+        result = await db.execute(select(self.model).filter(self.model.license_number == license_number))
+        return result.scalars().first()
+
     async def create(self, db: AsyncSession, *, obj_in: DriverCreate) -> Driver:
         # Hash password
         hashed_password = security.get_password_hash(obj_in.password)
@@ -59,9 +63,17 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
         if not driver:
             raise HTTPException(status_code=404, detail="Driver not found")
 
-        # Check for associated trips (if a driver is linked to trips)
-        # This would require importing Trip model and checking Trip.driver_id
-        # For now, assuming no direct trips linked to driver that would prevent deletion
+        # Check for associated trips
+        from app.models.trip import Trip # Import Trip model here to avoid circular dependency
+        trips_count_result = await db.execute(
+            select(Trip).filter(Trip.driver_id == id)
+        )
+        trips_count = trips_count_result.scalars().first()
+        if trips_count:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete driver: they have associated trips. Please reassign or delete trips first."
+            )
 
         # Clear assigned bus
         if driver.assigned_bus_id:
@@ -98,4 +110,28 @@ async def assign_routes_to_driver(db: AsyncSession, *, driver_id: int, route_ids
     await db.refresh(driver)
     return driver
 
-driver = CRUDDriver(Driver) # Instantiate CRUDDriver
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.crud.base import CRUDBase
+from app.models.user import Driver
+from app.schemas.user import DriverCreate, DriverUpdate
+from app.core.security import get_password_hash
+
+class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
+    async def create(self, db: AsyncSession, *, obj_in: DriverCreate) -> Driver:
+        db_obj = self.model(
+            email=obj_in.email,
+            full_name=obj_in.full_name,
+            phone=obj_in.phone,
+            password_hash=get_password_hash(obj_in.password),
+            role="driver",
+            username=obj_in.username,
+            license_number=obj_in.license_number,
+            assigned_bus_id=obj_in.assigned_bus_id,
+        )
+        db.add(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
+        return db_obj
+
+driver = CRUDDriver(Driver)
+
