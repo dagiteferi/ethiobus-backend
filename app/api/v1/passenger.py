@@ -138,3 +138,23 @@ async def get_my_bookings(
     bookings = result.scalars().all()
     return bookings
 
+@router.get("/trips/{trip_id}/booked-seats", response_model=List[int])
+async def get_booked_seats_for_trip(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get a list of booked seat numbers for a specific trip.
+    """
+    from sqlalchemy.future import select
+    from app.models.booking import Booking
+
+    result = await db.execute(
+        select(Booking.seat_number)
+        .filter(Booking.trip_id == trip_id)
+        .filter(Booking.is_paid == True) # Only consider paid bookings as reserved
+    )
+    booked_seats = result.scalars().all()
+    return booked_seats
+
+

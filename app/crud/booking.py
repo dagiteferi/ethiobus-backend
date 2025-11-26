@@ -28,6 +28,14 @@ class CRUDBooking(CRUDBase[Booking, BookingCreate, BookingUpdate]):
         if trip.available_seats <= 0:
             raise ValueError("No available seats on this trip")
 
+        # Explicitly check if the requested seat number is already booked for this trip
+        existing_booking_for_seat = await db.execute(
+            select(Booking)
+            .filter(Booking.trip_id == trip_id, Booking.seat_number == seat_number)
+        )
+        if existing_booking_for_seat.scalars().first():
+            raise ValueError(f"Seat {seat_number} is already booked for this trip.")
+
         # Decrement seat count
         trip.available_seats -= 1
 

@@ -94,11 +94,27 @@ async def scan_qr_code(
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     
+    if img is None:
+        raise HTTPException(status_code=400, detail="Could not decode image file.")
+
+    # Preprocessing for better QR code detection
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Apply adaptive thresholding to handle varying lighting conditions
+    # blockSize: Size of a pixel neighborhood that is used to calculate the threshold value
+    # C: Constant subtracted from the mean or weighted mean
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
     detector = cv2.QRCodeDetector()
-    data, bbox, straight_qrcode = detector.detectAndDecode(img)
+    data, bbox, straight_qrcode = detector.detectAndDecode(thresh) # Use the preprocessed image
 
     if not data:
-        raise HTTPException(status_code=400, detail="Could not decode QR code.")
+        # If detection fails with adaptive thresholding, try with original image or simple threshold
+        # This provides a fallback for cases where adaptive thresholding might not be ideal
+        data, bbox, straight_qrcode = detector.detectAndDecode(gray) # Try with just grayscale
+        if not data:
+            data, bbox, straight_qrcode = detector.detectAndDecode(img) # Finally, try with original color image
+            if not data:
+                raise HTTPException(status_code=400, detail="Could not decode QR code from image.")
 
     payload = qr_service.verify_qr_token(data)
     if not payload:

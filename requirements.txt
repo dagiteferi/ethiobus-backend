@@ -13,3 +13,4 @@ geoalchemy2==0.14.0
 python-dotenv==1.0.1
 numpy<2.0
 opencv-python==4.9.0.80
+pytest==8.2.1
