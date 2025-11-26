@@ -116,7 +116,7 @@ async def book_trip(
     
     return booking_response
 
-@router.get("/bookings", response_model=List[schemas.booking.BookingInDB])
+@router.get("/bookings", response_model=List[schemas.booking.BookingWithQR])
 async def get_my_bookings(
     db: AsyncSession = Depends(get_db),
     current_passenger: models.User = Depends(get_current_passenger),
@@ -135,8 +135,16 @@ async def get_my_bookings(
         .options(selectinload(Booking.trip).selectinload(models.Trip.route))
         .order_by(Booking.booked_at.desc())
     )
-    bookings = result.scalars().all()
-    return bookings
+    bookings_db = result.scalars().all()
+    
+    bookings_with_qr = []
+    for booking in bookings_db:
+        booking_schema = schemas.booking.BookingWithQR.model_validate(booking)
+        if booking.qr_token:
+            booking_schema.qr_code_png_base64 = qr_service.generate_qr_code_png_base64(booking.qr_token)
+        bookings_with_qr.append(booking_schema)
+        
+    return bookings_with_qr
 
 @router.get("/trips/{trip_id}/booked-seats", response_model=List[int])
 async def get_booked_seats_for_trip(
